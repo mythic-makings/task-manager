@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Manager</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-title">Categories</div>
+      <ul class="category-list" id="category-list"></ul>
+      <div id="add-cat-form" class="add-cat-form hidden">
+        <input id="cat-name-input" type="text" placeholder="Category name..." maxlength="24" />
+        <div class="color-swatches" id="color-swatches"></div>
+        <div class="cat-form-actions">
+          <button id="save-cat-btn" class="btn-cat-save">Add</button>
+          <button id="cancel-cat-btn" class="btn-cat-cancel">Cancel</button>
+        </div>
+      </div>
+      <button id="add-cat-btn" class="add-cat-btn">+ Add Category</button>
+    </nav>
+
+    <div class="main">
+      <header>
+        <h1 id="view-title">All Tasks</h1>
+        <button id="add-task-btn" class="btn-primary">+ New Task</button>
+      </header>
+
+      <div id="add-task-form" class="task-form hidden">
+        <input id="new-task-title" type="text" placeholder="Task title..." />
+        <div class="form-row">
+          <input id="new-task-due" type="date" />
+          <select id="new-task-priority">
+            <option value="none">No priority</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+          <select id="new-task-category">
+            <option value="">No category</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button id="save-task-btn" class="btn-primary">Add Task</button>
+          <button id="cancel-task-btn" class="btn-ghost">Cancel</button>
+        </div>
+      </div>
+
+      <div id="task-list"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
