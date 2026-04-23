@@ -419,3 +419,84 @@ function escHtml(str) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 render();
+
+// ─── Notes (Supabase) ────────────────────────────────────────────────────────
+
+const db = (window.SUPABASE_URL && window.SUPABASE_ANON_KEY)
+  ? window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY)
+  : null;
+
+const notesMap = {};
+
+async function loadNotes() {
+  const list = document.getElementById('notes-list');
+  if (!db) {
+    list.innerHTML = '<p class="notes-empty">Notes unavailable — Supabase not configured.</p>';
+    return;
+  }
+  const { data, error } = await db.from('notes').select('*').order('created_at', { ascending: false });
+  if (error) {
+    list.innerHTML = '<p class="notes-empty">Failed to load notes.</p>';
+    return;
+  }
+  data.forEach(n => { notesMap[n.id] = n; });
+  if (!data.length) {
+    list.innerHTML = '<p class="notes-empty">No notes yet. Be the first to post one.</p>';
+    return;
+  }
+  list.innerHTML = data.map(note => `
+    <div class="note-card">
+      <div class="note-card-header">
+        <span class="note-card-title">${escHtml(note.title)}</span>
+        <span class="note-card-time">${new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+      </div>
+      <p class="note-card-body">${escHtml(note.body)}</p>
+      <button class="btn-share" onclick="shareNote('${note.id}')">Share via email</button>
+    </div>
+  `).join('');
+}
+
+async function shareNote(id) {
+  const note = notesMap[id];
+  if (!note) return;
+  const to = prompt('Recipient email address:');
+  if (to === null) return;
+  if (!to.includes('@')) { alert('Please enter a valid email address.'); return; }
+  try {
+    const res = await fetch('/api/share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, title: note.title, body: note.body, siteUrl: window.location.origin }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert(`Note shared to ${to}!`);
+    } else {
+      alert(`Could not send: ${data.error || 'Unknown error'}`);
+    }
+  } catch {
+    alert('Failed to send email. Please try again.');
+  }
+}
+
+document.getElementById('note-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!db) return;
+  const titleEl = document.getElementById('note-title-input');
+  const bodyEl  = document.getElementById('note-body-input');
+  const title   = titleEl.value.trim();
+  const body    = bodyEl.value.trim();
+  if (!title || !body) return;
+  const btn = e.target.querySelector('button[type="submit"]');
+  btn.disabled = true;
+  btn.textContent = 'Posting…';
+  const { error } = await db.from('notes').insert({ title, body });
+  btn.disabled = false;
+  btn.textContent = 'Post Note';
+  if (error) { alert('Failed to post note.'); return; }
+  titleEl.value = '';
+  bodyEl.value  = '';
+  await loadNotes();
+});
+
+loadNotes();

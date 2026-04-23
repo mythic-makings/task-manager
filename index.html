@@ -49,9 +49,25 @@
       </div>
 
       <div id="task-list"></div>
+
+      <section class="notes-section">
+        <div class="notes-section-header">
+          <h2 class="notes-section-title">Notes</h2>
+        </div>
+        <div id="notes-list" class="notes-list">
+          <p class="notes-loading">Loading notes&hellip;</p>
+        </div>
+        <form id="note-form" class="note-form">
+          <input id="note-title-input" type="text" placeholder="Title" required />
+          <textarea id="note-body-input" placeholder="Write a note&hellip;" rows="3" required></textarea>
+          <button type="submit" class="btn-primary">Post Note</button>
+        </form>
+      </section>
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

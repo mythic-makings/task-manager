@@ -597,3 +597,24 @@ h1 {
 }
 .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 15px; }
+
+/* Notes section */
+.notes-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border); }
+.notes-section-header { margin-bottom: 16px; }
+.notes-section-title { font-size: 16px; font-weight: 600; color: var(--text); }
+
+.notes-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.notes-loading, .notes-empty { font-size: 13px; color: var(--text-dim); padding: 16px 0; }
+
+.note-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+.note-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.note-card-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.note-card-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+.note-card-body { font-size: 13px; line-height: 1.6; color: var(--text-dim); white-space: pre-wrap; margin-bottom: 12px; }
+.btn-share { font-size: 12px; color: var(--accent); background: none; border: 1px solid var(--accent); border-radius: 6px; padding: 4px 10px; cursor: pointer; transition: background 0.15s; }
+.btn-share:hover { background: var(--accent-dim); }
+
+.note-form { display: flex; flex-direction: column; gap: 10px; }
+.note-form input, .note-form textarea { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 14px; padding: 10px 12px; resize: vertical; font-family: inherit; }
+.note-form input:focus, .note-form textarea:focus { outline: none; border-color: var(--accent); }
+.note-form textarea { min-height: 80px; }
