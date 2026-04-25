@@ -1,4 +1,19 @@
 const { createClient } = require('@supabase/supabase-js');
+const crypto = require('crypto');
+
+function verifySignature(req, secret) {
+  const signature = req.headers['svix-signature'] || '';
+  const msgId = req.headers['svix-id'] || '';
+  const timestamp = req.headers['svix-timestamp'] || '';
+  if (!signature || !msgId || !timestamp) return false;
+
+  const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  const toSign = `${msgId}.${timestamp}.${body}`;
+  const expected = crypto.createHmac('sha256', secret.replace(/^whsec_/, ''))
+    .update(toSign).digest('base64');
+
+  return signature.split(' ').some(s => s.split(',')[1] === expected);
+}
 
 const EVENT_MAP = {
   'email.delivered':  'delivered',
@@ -10,6 +25,11 @@ const EVENT_MAP = {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
+
+  const secret = (process.env.RESEND_WEBHOOK_SECRET || '').trim();
+  if (secret && !verifySignature(req, secret)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
 
   const { type, data } = req.body || {};
 
