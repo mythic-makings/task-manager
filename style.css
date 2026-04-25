@@ -618,3 +618,26 @@ h1 {
 .note-form input, .note-form textarea { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 14px; padding: 10px 12px; resize: vertical; font-family: inherit; }
 .note-form input:focus, .note-form textarea:focus { outline: none; border-color: var(--accent); }
 .note-form textarea { min-height: 80px; }
+
+/* Activity feed */
+.note-activity { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.activity-label { font-size: 10px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+.activity-item { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.activity-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.activity-recipient { color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.activity-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0; }
+.activity-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+.activity-dot.activity-sent       { background: #888899; }
+.activity-dot.activity-delivered  { background: #6ef7a2; }
+.activity-dot.activity-opened     { background: #6e9ef7; }
+.activity-dot.activity-clicked    { background: #7c6ef7; }
+.activity-dot.activity-bounced    { background: #f76e6e; }
+.activity-dot.activity-complained { background: #f7c96e; }
+
+.activity-badge.activity-sent       { background: rgba(136,136,153,0.15); color: #888899; }
+.activity-badge.activity-delivered  { background: rgba(110,247,162,0.15); color: #6ef7a2; }
+.activity-badge.activity-opened     { background: rgba(110,158,247,0.15); color: #6e9ef7; }
+.activity-badge.activity-clicked    { background: rgba(124,110,247,0.15); color: #7c6ef7; }
+.activity-badge.activity-bounced    { background: rgba(247,110,110,0.15); color: #f76e6e; }
+.activity-badge.activity-complained { background: rgba(247,201,110,0.15); color: #f7c96e; }

@@ -428,32 +428,74 @@ const db = (window.SUPABASE_URL && window.SUPABASE_ANON_KEY)
 
 const notesMap = {};
 
+function relTime(ts) {
+  const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (diff < 60)    return 'just now';
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function renderActivity(events) {
+  if (!events || !events.length) return '';
+  const latest = {};
+  events.forEach(e => {
+    const prev = latest[e.recipient];
+    if (!prev || new Date(e.created_at) > new Date(prev.created_at)) latest[e.recipient] = e;
+  });
+  const items = Object.values(latest).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return `<div class="note-activity">
+    <div class="activity-label">Activity</div>
+    ${items.map(e => `
+      <div class="activity-item">
+        <span class="activity-dot activity-${e.event_type}"></span>
+        <span class="activity-recipient">${escHtml(e.recipient)}</span>
+        <span class="activity-badge activity-${e.event_type}">${e.event_type}</span>
+        <span class="activity-time">${relTime(e.created_at)}</span>
+      </div>`).join('')}
+  </div>`;
+}
+
+function renderNoteCard(note, events) {
+  return `<div class="note-card">
+    <div class="note-card-header">
+      <span class="note-card-title">${escHtml(note.title)}</span>
+      <span class="note-card-time">${new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+    </div>
+    <p class="note-card-body">${escHtml(note.body)}</p>
+    <button class="btn-share" onclick="shareNote('${note.id}')">Share via email</button>
+    ${renderActivity(events)}
+  </div>`;
+}
+
 async function loadNotes() {
   const list = document.getElementById('notes-list');
   if (!db) {
     list.innerHTML = '<p class="notes-empty">Notes unavailable — Supabase not configured.</p>';
     return;
   }
-  const { data, error } = await db.from('notes').select('*').order('created_at', { ascending: false });
-  if (error) {
-    list.innerHTML = '<p class="notes-empty">Failed to load notes.</p>';
-    return;
-  }
-  data.forEach(n => { notesMap[n.id] = n; });
-  if (!data.length) {
+  const { data: notes, error } = await db.from('notes').select('*').order('created_at', { ascending: false });
+  if (error) { list.innerHTML = '<p class="notes-empty">Failed to load notes.</p>'; return; }
+
+  notes.forEach(n => { notesMap[n.id] = n; });
+
+  if (!notes.length) {
     list.innerHTML = '<p class="notes-empty">No notes yet. Be the first to post one.</p>';
     return;
   }
-  list.innerHTML = data.map(note => `
-    <div class="note-card">
-      <div class="note-card-header">
-        <span class="note-card-title">${escHtml(note.title)}</span>
-        <span class="note-card-time">${new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-      </div>
-      <p class="note-card-body">${escHtml(note.body)}</p>
-      <button class="btn-share" onclick="shareNote('${note.id}')">Share via email</button>
-    </div>
-  `).join('');
+
+  const eventsMap = {};
+  const { data: events } = await db
+    .from('email_events')
+    .select('*')
+    .in('note_id', notes.map(n => n.id))
+    .order('created_at', { ascending: false });
+  if (events) events.forEach(e => {
+    if (!eventsMap[e.note_id]) eventsMap[e.note_id] = [];
+    eventsMap[e.note_id].push(e);
+  });
+
+  list.innerHTML = notes.map(n => renderNoteCard(n, eventsMap[n.id] || [])).join('');
 }
 
 async function shareNote(id) {
@@ -462,19 +504,23 @@ async function shareNote(id) {
   const to = prompt('Recipient email address:');
   if (to === null) return;
   if (!to.includes('@')) { alert('Please enter a valid email address.'); return; }
+  const btn = document.querySelector(`button[onclick="shareNote('${id}')"]`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   try {
     const res = await fetch('/api/share', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, title: note.title, body: note.body, siteUrl: window.location.origin }),
+      body: JSON.stringify({ to, title: note.title, body: note.body, noteId: note.id, siteUrl: window.location.origin }),
     });
     const data = await res.json();
     if (res.ok) {
-      alert(`Note shared to ${to}!`);
+      await loadNotes();
     } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Share via email'; }
       alert(`Could not send: ${data.error || 'Unknown error'}`);
     }
   } catch {
+    if (btn) { btn.disabled = false; btn.textContent = 'Share via email'; }
     alert('Failed to send email. Please try again.');
   }
 }

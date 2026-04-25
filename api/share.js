@@ -1,22 +1,67 @@
+const { createClient } = require('@supabase/supabase-js');
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { to, title, body, siteUrl } = req.body || {};
+  const { to, title, body, noteId, siteUrl } = req.body || {};
 
   if (!to || !body) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) {
     return res.status(500).json({ error: 'Email service not configured' });
   }
 
   const siteLink = siteUrl || 'https://task-manager-kappa-tawny.vercel.app';
 
-  const html = `<!DOCTYPE html>
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Task Manager <onboarding@resend.dev>',
+        to: [to],
+        subject: title ? `Note: ${title}` : 'A note was shared with you',
+        html: buildHtml(title, body, siteLink),
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.message || 'Failed to send email' });
+    }
+
+    // Record the sent event server-side
+    if (noteId && data.id) {
+      const supabaseUrl = (process.env.SUPABASE_URL || '').trim();
+      const serviceKey  = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+      if (supabaseUrl && serviceKey) {
+        const supabase = createClient(supabaseUrl, serviceKey);
+        await supabase.from('email_events').insert({
+          message_id: data.id,
+          note_id:    noteId,
+          recipient:  to,
+          event_type: 'sent',
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, id: data.id });
+  } catch {
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+};
+
+function buildHtml(title, body, siteLink) {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -56,33 +101,7 @@ module.exports = async (req, res) => {
   </div>
 </body>
 </html>`;
-
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Task Manager <onboarding@resend.dev>',
-        to: [to],
-        subject: title ? `Note: ${title}` : 'A note was shared with you',
-        html,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.message || 'Failed to send email' });
-    }
-
-    res.status(200).json({ success: true, id: data.id });
-  } catch {
-    res.status(500).json({ error: 'Failed to send email' });
-  }
-};
+}
 
 function escHtml(str) {
   return String(str)
