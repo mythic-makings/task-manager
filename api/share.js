@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Task Manager <onboarding@resend.dev>',
+        from: 'Task Manager <noreply@mail.ariellebrown.com>',
         to: [to],
         subject: title ? `Note: ${title}` : 'A note was shared with you',
         html: buildHtml(title, body, siteLink),
