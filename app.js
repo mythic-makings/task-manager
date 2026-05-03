@@ -18,6 +18,7 @@ let tasks      = loadTasks();
 let categories = loadCategories();
 let activeCategory = null; // null = All
 let dragSrc = null;
+let dragSrcCat = null;
 let selectedColor = COLOR_PALETTE[0];
 
 function loadTasks() {
@@ -107,15 +108,23 @@ function renderSidebar() {
       <span class="cat-count">${allCount}</span>
     </li>`;
 
-  const catItems = categories.map(cat => {
+  const catItems = categories.map((cat, ci) => {
     const count = tasks.filter(t =>
       t.categoryId === cat.id || t.subtasks.some(s => s.categoryId === cat.id)
     ).length;
     return `
-      <li class="cat-item ${activeCategory === cat.id ? 'active' : ''}" onclick="setCategory('${cat.id}')">
-        <span class="cat-dot" style="background:${cat.color}"></span>
+      <li class="cat-item ${activeCategory === cat.id ? 'active' : ''}"
+          draggable="true"
+          ondragstart="onCatDragStart(event, ${ci})"
+          ondragover="onCatDragOver(event, ${ci})"
+          ondrop="onCatDrop(event, ${ci})"
+          ondragleave="onCatDragLeave(event)"
+          ondragend="onCatDragEnd(event)"
+          onclick="setCategory('${cat.id}')">
+        <span class="cat-dot clickable" style="background:${cat.color}" onclick="openColorPicker(event,'${cat.id}')" title="Change color"></span>
         <span class="cat-name">${escHtml(cat.name)}</span>
         <span class="cat-count">${count}</span>
+        <button class="cat-edit" onclick="renameCategory(event,'${cat.id}')" title="Rename">✏️</button>
         <button class="cat-delete" onclick="deleteCategory(event,'${cat.id}')" title="Delete">×</button>
       </li>`;
   }).join('');
@@ -159,7 +168,8 @@ function renderTasks() {
 
     const priority = task.priority || 'none';
     const priorityBadge = priority !== 'none'
-      ? `<span class="priority-badge ${priority}">${priority}</span>` : '';
+      ? `<button class="priority-badge ${priority} clickable" onclick="cyclePriority(event, ${ti})" title="Change priority">${priority}</button>`
+      : `<button class="priority-badge none clickable" onclick="cyclePriority(event, ${ti})" title="Set priority">+ priority</button>`;
 
     const subtaskListHtml = task.subtasks.map((sub, si) => {
       const subCat = getCat(sub.categoryId);
@@ -243,6 +253,15 @@ function toggleExpand(ti) {
 
 function deleteTask(ti) {
   tasks.splice(ti, 1);
+  saveTasks(); render();
+}
+
+function cyclePriority(e, ti) {
+  e.stopPropagation();
+  const order = ['none', 'low', 'medium', 'high'];
+  const current = tasks[ti].priority || 'none';
+  const next = order[(order.indexOf(current) + 1) % order.length];
+  tasks[ti].priority = next;
   saveTasks(); render();
 }
 
@@ -363,6 +382,56 @@ function closeCatForm() {
   document.getElementById('cat-name-input').value = '';
 }
 
+function openColorPicker(e, catId) {
+  e.stopPropagation();
+  closeColorPicker();
+  const cat = getCat(catId);
+  if (!cat) return;
+  const popup = document.createElement('div');
+  popup.id = 'color-picker-popup';
+  popup.innerHTML = COLOR_PALETTE.map(color => `
+    <div class="swatch ${color === cat.color ? 'selected' : ''}"
+         style="background:${color}"
+         onclick="pickCategoryColor(event,'${catId}','${color}')"></div>
+  `).join('');
+  document.body.appendChild(popup);
+  const rect = e.target.getBoundingClientRect();
+  popup.style.top = `${rect.bottom + 6}px`;
+  popup.style.left = `${rect.left}px`;
+  setTimeout(() => document.addEventListener('click', closeColorPicker, { once: true }), 0);
+}
+
+function closeColorPicker() {
+  const existing = document.getElementById('color-picker-popup');
+  if (existing) existing.remove();
+}
+
+function pickCategoryColor(e, catId, color) {
+  e.stopPropagation();
+  const cat = getCat(catId);
+  if (!cat) return;
+  cat.color = color;
+  saveCategories();
+  closeColorPicker();
+  render();
+}
+
+function renameCategory(e, catId) {
+  e.stopPropagation();
+  const cat = getCat(catId);
+  if (!cat) return;
+  const next = prompt('Rename category:', cat.name);
+  if (next === null) return;
+  const trimmed = next.trim();
+  if (!trimmed || trimmed === cat.name) return;
+  cat.name = trimmed;
+  saveCategories();
+  render();
+  if (activeCategory === catId) {
+    document.getElementById('view-title').textContent = trimmed;
+  }
+}
+
 function deleteCategory(e, catId) {
   e.stopPropagation();
   categories = categories.filter(c => c.id !== catId);
@@ -405,6 +474,38 @@ function onDrop(e, ti) {
 function onDragEnd(e) {
   dragSrc = null;
   document.querySelectorAll('.task-card').forEach(c => {
+    c.classList.remove('dragging', 'drag-over');
+  });
+}
+
+function onCatDragStart(e, ci) {
+  dragSrcCat = ci;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => e.target.closest('.cat-item').classList.add('dragging'), 0);
+}
+
+function onCatDragOver(e, ci) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('drag-over'));
+  if (ci !== dragSrcCat) e.target.closest('.cat-item')?.classList.add('drag-over');
+}
+
+function onCatDragLeave(e) {
+  e.target.closest('.cat-item')?.classList.remove('drag-over');
+}
+
+function onCatDrop(e, ci) {
+  e.preventDefault();
+  if (dragSrcCat === null || dragSrcCat === ci) return;
+  const moved = categories.splice(dragSrcCat, 1)[0];
+  categories.splice(ci, 0, moved);
+  saveCategories(); render();
+}
+
+function onCatDragEnd(e) {
+  dragSrcCat = null;
+  document.querySelectorAll('.cat-item').forEach(c => {
     c.classList.remove('dragging', 'drag-over');
   });
 }
