@@ -528,6 +528,7 @@ const db = (window.SUPABASE_URL && window.SUPABASE_ANON_KEY)
   : null;
 
 const notesMap = {};
+let showResolved = false;
 
 function relTime(ts) {
   const diff = Math.floor((Date.now() - new Date(ts)) / 1000);
@@ -558,13 +559,19 @@ function renderActivity(events) {
 }
 
 function renderNoteCard(note, events) {
-  return `<div class="note-card">
+  const actionBtn = note.resolved
+    ? `<button class="btn-resolve" onclick="reopenNote('${note.id}')">Reopen</button>`
+    : `<button class="btn-resolve" onclick="resolveNote('${note.id}')">Mark resolved</button>`;
+  return `<div class="note-card ${note.resolved ? 'resolved' : ''}">
     <div class="note-card-header">
       <span class="note-card-title">${escHtml(note.title)}</span>
       <span class="note-card-time">${new Date(note.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
     </div>
     <p class="note-card-body">${escHtml(note.body)}</p>
-    <button class="btn-share" onclick="shareNote('${note.id}')">Share via email</button>
+    <div class="note-card-actions">
+      <button class="btn-share" onclick="shareNote('${note.id}')">Share via email</button>
+      ${actionBtn}
+    </div>
     ${renderActivity(events)}
   </div>`;
 }
@@ -580,8 +587,14 @@ async function loadNotes() {
 
   notes.forEach(n => { notesMap[n.id] = n; });
 
-  if (!notes.length) {
-    list.innerHTML = '<p class="notes-empty">No notes yet. Be the first to post one.</p>';
+  const resolvedCount = notes.filter(n => n.resolved).length;
+  const visibleNotes = showResolved ? notes : notes.filter(n => !n.resolved);
+  updateResolvedToggle(resolvedCount);
+
+  if (!visibleNotes.length) {
+    list.innerHTML = notes.length
+      ? '<p class="notes-empty">No open notes. All caught up.</p>'
+      : '<p class="notes-empty">No notes yet. Be the first to post one.</p>';
     return;
   }
 
@@ -589,14 +602,41 @@ async function loadNotes() {
   const { data: events } = await db
     .from('email_events')
     .select('*')
-    .in('note_id', notes.map(n => n.id))
+    .in('note_id', visibleNotes.map(n => n.id))
     .order('created_at', { ascending: false });
   if (events) events.forEach(e => {
     if (!eventsMap[e.note_id]) eventsMap[e.note_id] = [];
     eventsMap[e.note_id].push(e);
   });
 
-  list.innerHTML = notes.map(n => renderNoteCard(n, eventsMap[n.id] || [])).join('');
+  list.innerHTML = visibleNotes.map(n => renderNoteCard(n, eventsMap[n.id] || [])).join('');
+}
+
+function updateResolvedToggle(count) {
+  const btn = document.getElementById('notes-resolved-toggle');
+  if (!btn) return;
+  if (count === 0) { btn.classList.add('hidden'); return; }
+  btn.classList.remove('hidden');
+  btn.textContent = showResolved ? `Hide resolved (${count})` : `Show resolved (${count})`;
+}
+
+function toggleResolved() {
+  showResolved = !showResolved;
+  loadNotes();
+}
+
+async function resolveNote(id) {
+  if (!db) return;
+  const { error } = await db.from('notes').update({ resolved: true }).eq('id', id);
+  if (error) { alert('Failed to resolve note.'); return; }
+  await loadNotes();
+}
+
+async function reopenNote(id) {
+  if (!db) return;
+  const { error } = await db.from('notes').update({ resolved: false }).eq('id', id);
+  if (error) { alert('Failed to reopen note.'); return; }
+  await loadNotes();
 }
 
 async function shareNote(id) {
