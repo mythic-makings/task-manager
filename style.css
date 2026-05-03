@@ -275,6 +275,20 @@ h1 {
 }
 .btn-primary:hover { opacity: 0.85; }
 
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn-secondary:hover { color: var(--text); border-color: var(--text-dim); }
+
 .btn-ghost {
   background: transparent;
   color: var(--text-dim);
@@ -421,6 +435,16 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  outline: none;
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin: -1px -4px;
+  transition: background 0.15s;
+}
+.task-title:focus {
+  background: var(--surface2);
+  white-space: normal;
+  overflow: visible;
 }
 .task-card.completed .task-title {
   text-decoration: line-through;
@@ -641,6 +665,39 @@ h1 {
   transition: background 0.15s;
 }
 .add-subtask-btn:hover { background: rgba(124, 110, 247, 0.3); }
+
+.task-notes { margin-top: 12px; }
+.task-notes-toolbar { display: flex; gap: 4px; margin-bottom: 6px; }
+.task-notes-toolbar button {
+  background: var(--surface2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.task-notes-toolbar button:hover { color: var(--text); background: var(--surface); }
+.task-notes-content {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  min-height: 60px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.task-notes-content:focus { border-color: var(--accent); }
+.task-notes-content:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.task-notes-content a { color: var(--accent); text-decoration: underline; }
 
 /* Empty state */
 .empty-state {

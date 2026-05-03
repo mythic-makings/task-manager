@@ -19,6 +19,7 @@ let categories = loadCategories();
 let activeCategory = null; // null = All
 let dragSrc = null;
 let dragSrcCat = null;
+let showCompleted = false;
 let selectedColor = COLOR_PALETTE[0];
 
 function loadTasks() {
@@ -146,16 +147,26 @@ function setCategory(catId) {
 function renderTasks() {
   const list = document.getElementById('task-list');
 
-  let visible = tasks;
+  let inCategory = tasks;
   if (activeCategory !== null) {
-    visible = tasks.filter(t =>
+    inCategory = tasks.filter(t =>
       t.categoryId === activeCategory ||
       t.subtasks.some(s => s.categoryId === activeCategory)
     );
   }
 
+  const completedCount = inCategory.filter(t => t.completed).length;
+  const visible = inCategory.filter(t => showCompleted ? t.completed : !t.completed);
+  updateCompletedToggle(completedCount);
+  updateViewMode();
+
   if (visible.length === 0) {
-    list.innerHTML = `<div class="empty-state"><div class="icon">✅</div><p>No tasks here yet.</p></div>`;
+    const msg = showCompleted
+      ? `<div class="empty-state"><div class="icon">📭</div><p>No completed tasks here yet.</p></div>`
+      : (completedCount > 0
+          ? `<div class="empty-state"><div class="icon">✅</div><p>All caught up. ${completedCount} task${completedCount === 1 ? '' : 's'} completed — view them with the button above.</p></div>`
+          : `<div class="empty-state"><div class="icon">✅</div><p>No tasks here yet.</p></div>`);
+    list.innerHTML = msg;
     return;
   }
 
@@ -203,7 +214,10 @@ function renderTasks() {
           <div class="task-checkbox ${task.completed ? 'checked' : ''}"
                onclick="toggleTask(${ti})">${task.completed ? '✓' : ''}</div>
           <div class="task-body">
-            <div class="task-title">${escHtml(task.title)}</div>
+            <div class="task-title" contenteditable="true" spellcheck="true"
+                 onclick="event.stopPropagation()"
+                 onblur="saveTaskTitle(${ti}, this)"
+                 onkeydown="onTaskTitleKey(event, this)">${escHtml(task.title)}</div>
             <div class="task-meta">
               ${priorityBadge}
               ${dueBadge(task.dueDate)}
@@ -228,6 +242,16 @@ function renderTasks() {
               ${categories.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('')}
             </select>
             <button class="add-subtask-btn" onclick="addSubtask(${ti})">+ Add</button>
+          </div>
+          <div class="task-notes">
+            <div class="task-notes-toolbar">
+              <button type="button" onmousedown="event.preventDefault()" onclick="formatNote(event, ${ti}, 'bold')" title="Bold"><b>B</b></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="formatNote(event, ${ti}, 'italic')" title="Italic"><i>I</i></button>
+              <button type="button" onmousedown="event.preventDefault()" onclick="linkNote(event, ${ti})" title="Add link">🔗</button>
+            </div>
+            <div class="task-notes-content" id="notes-${ti}" contenteditable="true"
+                 data-placeholder="Add notes — use the toolbar to format or link"
+                 onblur="saveNotes(${ti})">${task.notes || ''}</div>
           </div>
         </div>
       </div>`;
@@ -254,6 +278,86 @@ function toggleExpand(ti) {
 function deleteTask(ti) {
   tasks.splice(ti, 1);
   saveTasks(); render();
+}
+
+function updateCompletedToggle(count) {
+  const btn = document.getElementById('show-completed-btn');
+  if (!btn) return;
+  if (showCompleted) {
+    btn.classList.remove('hidden');
+    btn.textContent = '← Back to active tasks';
+  } else if (count > 0) {
+    btn.classList.remove('hidden');
+    btn.textContent = `View completed (${count})`;
+  } else {
+    btn.classList.add('hidden');
+  }
+}
+
+function updateViewMode() {
+  const baseTitle = activeCategory === null ? 'All Tasks' : (getCat(activeCategory)?.name || 'All Tasks');
+  document.getElementById('view-title').textContent = showCompleted ? `Completed — ${baseTitle}` : baseTitle;
+  const addBtn = document.getElementById('add-task-btn');
+  const addForm = document.getElementById('add-task-form');
+  if (showCompleted) {
+    addBtn.classList.add('hidden');
+    addForm.classList.add('hidden');
+  } else {
+    addBtn.classList.remove('hidden');
+  }
+}
+
+function toggleCompleted() {
+  showCompleted = !showCompleted;
+  renderTasks();
+}
+
+function saveTaskTitle(ti, el) {
+  const next = el.textContent.trim();
+  if (!next) { el.textContent = tasks[ti].title; return; }
+  if (next === tasks[ti].title) return;
+  tasks[ti].title = next;
+  saveTasks();
+}
+
+function onTaskTitleKey(e, el) {
+  if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+  if (e.key === 'Escape') {
+    const ti = parseInt(el.closest('.task-card').dataset.index, 10);
+    el.textContent = tasks[ti].title;
+    el.blur();
+  }
+}
+
+function saveNotes(ti) {
+  const el = document.getElementById(`notes-${ti}`);
+  if (!el) return;
+  tasks[ti].notes = el.innerHTML.trim();
+  saveTasks();
+}
+
+function formatNote(e, ti, cmd) {
+  e.preventDefault();
+  document.getElementById(`notes-${ti}`).focus();
+  document.execCommand(cmd, false, null);
+  saveNotes(ti);
+}
+
+function linkNote(e, ti) {
+  e.preventDefault();
+  const el = document.getElementById(`notes-${ti}`);
+  el.focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) {
+    alert('Select some text first, then click the link button.');
+    return;
+  }
+  let url = prompt('Link URL:', 'https://');
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url) && !url.startsWith('mailto:')) url = 'https://' + url;
+  document.execCommand('createLink', false, url);
+  el.querySelectorAll('a').forEach(a => a.setAttribute('target', '_blank'));
+  saveNotes(ti);
 }
 
 function cyclePriority(e, ti) {

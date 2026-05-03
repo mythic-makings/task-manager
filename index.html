@@ -25,7 +25,10 @@
     <div class="main">
       <header>
         <h1 id="view-title">All Tasks</h1>
-        <button id="add-task-btn" class="btn-primary">+ New Task</button>
+        <div class="header-actions">
+          <button id="add-task-btn" class="btn-primary">+ New Task</button>
+          <button id="show-completed-btn" class="btn-secondary hidden" onclick="toggleCompleted()"></button>
+        </div>
       </header>
 
       <div id="add-task-form" class="task-form hidden">
