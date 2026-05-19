@@ -283,15 +283,10 @@ function deleteTask(ti) {
 function updateCompletedToggle(count) {
   const btn = document.getElementById('show-completed-btn');
   if (!btn) return;
-  if (showCompleted) {
-    btn.classList.remove('hidden');
-    btn.textContent = '← Back to active tasks';
-  } else if (count > 0) {
-    btn.classList.remove('hidden');
-    btn.textContent = `View completed (${count})`;
-  } else {
-    btn.classList.add('hidden');
-  }
+  btn.classList.remove('hidden');
+  btn.textContent = showCompleted
+    ? '← Active Tasks'
+    : `Completed Tasks${count > 0 ? ` (${count})` : ''}`;
 }
 
 function updateViewMode() {
