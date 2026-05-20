@@ -459,15 +459,39 @@ h1 {
   margin-top: 4px;
 }
 
+.due-badge-wrap { position: relative; display: inline-flex; align-items: center; }
+.due-picker-input {
+  position: absolute;
+  top: 0; left: 0;
+  opacity: 0;
+  width: 1px; height: 1px;
+  pointer-events: none;
+}
+.due-picker-input:not(.hidden) { pointer-events: auto; }
+
 .due-badge {
   font-size: 11px;
   padding: 2px 7px;
   border-radius: 4px;
   font-weight: 500;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.15s;
 }
+.due-badge:hover { filter: brightness(1.2); }
 .due-badge.upcoming { background: var(--accent-dim); color: var(--accent); }
 .due-badge.overdue  { background: rgba(247, 110, 110, 0.15); color: var(--danger); }
 .due-badge.today    { background: rgba(247, 201, 110, 0.15); color: var(--warn); }
+.due-badge.add {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.task-card:hover .due-badge.add { opacity: 0.7; }
+.due-badge.add:hover { opacity: 1 !important; }
 
 .priority-badge {
   font-size: 11px;

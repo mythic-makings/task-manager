@@ -47,14 +47,25 @@ function getCat(id) {
 
 // ─── Due date helpers ───────────────────────────────────────────────────────
 
-function dueBadge(dateStr) {
-  if (!dateStr) return '';
+function dueBadge(dateStr, ti) {
+  const inputId = `due-input-${ti}`;
+  const input = `<input type="date" id="${inputId}" class="due-picker-input hidden"
+    value="${dateStr || ''}"
+    onchange="saveDueDate(${ti}, this.value)"
+    onblur="document.getElementById('${inputId}').classList.add('hidden')" />`;
+  if (!dateStr) {
+    return `<span class="due-badge-wrap">
+      <button class="due-badge add" onclick="openDuePicker(event,'${inputId}')" title="Set due date">+ due date</button>
+      ${input}</span>`;
+  }
   const today = new Date(); today.setHours(0,0,0,0);
   const due = new Date(dateStr + 'T00:00:00');
   const diff = (due - today) / 86400000;
-  if (diff < 0)   return `<span class="due-badge overdue">Overdue</span>`;
-  if (diff === 0) return `<span class="due-badge today">Today</span>`;
-  return `<span class="due-badge upcoming">${due.toLocaleDateString(undefined, { month:'short', day:'numeric' })}</span>`;
+  const cls = diff < 0 ? 'overdue' : diff === 0 ? 'today' : 'upcoming';
+  const label = diff < 0 ? 'Overdue' : diff === 0 ? 'Today' : due.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  return `<span class="due-badge-wrap">
+    <button class="due-badge ${cls}" onclick="openDuePicker(event,'${inputId}')" title="Change due date">${label}</button>
+    ${input}</span>`;
 }
 
 function subtaskDueClass(dateStr) {
@@ -220,7 +231,7 @@ function renderTasks() {
                  onkeydown="onTaskTitleKey(event, this)">${escHtml(task.title)}</div>
             <div class="task-meta">
               ${priorityBadge}
-              ${dueBadge(task.dueDate)}
+              ${dueBadge(task.dueDate, ti)}
               ${catBadgeHtml(task.categoryId)}
               ${subtaskCountHtml}
             </div>
@@ -305,6 +316,21 @@ function updateViewMode() {
 function toggleCompleted() {
   showCompleted = !showCompleted;
   renderTasks();
+}
+
+function openDuePicker(e, inputId) {
+  e.stopPropagation();
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.classList.remove('hidden');
+  input.focus();
+  input.showPicker?.();
+}
+
+function saveDueDate(ti, value) {
+  tasks[ti].dueDate = value || null;
+  saveTasks();
+  render();
 }
 
 function saveTaskTitle(ti, el) {
